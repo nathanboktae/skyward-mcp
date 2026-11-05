@@ -18,9 +18,9 @@ ports_description:
 watchdog: http://[HOST]:[PORT:3000]/healthz
 options:
   skyward_url: https://www.q.wa-k12.net/lkwash/
-  username: ""
-  password: ""
-  mcp_token: ""
+  username: null
+  password: null
+  mcp_token: null
   timezone: America/Los_Angeles
   timeout_ms: 45000
 schema:

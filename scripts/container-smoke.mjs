@@ -11,7 +11,8 @@ let serviceFound = false;
 for (const pid of await readdir('/proc')) {
   if (!/^\d+$/.test(pid)) continue;
   const command = await readFile(`/proc/${pid}/cmdline`, 'utf8').catch(() => '');
-  if (!command.includes('dist/addon-main.js')) continue;
+  const args = command.split('\0');
+  if (!/(^|\/)node$/.test(args[0]) || args[1] !== 'dist/addon-main.js') continue;
   const status = await readFile(`/proc/${pid}/status`, 'utf8');
   assert.match(status, /Uid:\s+1000\s+1000\s+1000\s+1000/);
   serviceFound = true;
