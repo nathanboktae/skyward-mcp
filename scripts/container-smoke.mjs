@@ -6,6 +6,12 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 
 assert.equal(process.arch, 'arm64');
 assert.equal(process.getuid(), 1000);
+const { SecretUrlStore } = await import('./dist/secret-url.js');
+const urlStore = new SecretUrlStore('/data/connection');
+await urlStore.load();
+await urlStore.change('rotate');
+assert.match(urlStore.current(), /^[a-f0-9]{64}$/);
+await urlStore.change('disable');
 // Also verify that the real HA entrypoint dropped its privileges after reading options.
 let serviceFound = false;
 for (const pid of await readdir('/proc')) {

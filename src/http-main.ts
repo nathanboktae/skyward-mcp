@@ -3,9 +3,9 @@ import { loadConfig } from './config.js';
 import { SkywardClient } from './client.js';
 import { createHttpApp, readHttpConfig } from './http.js';
 
-try {
+export async function startHttp(secretToken?: () => string | null) {
   const client = new SkywardClient(loadConfig());
-  const config = readHttpConfig();
+  const config = { ...readHttpConfig(), secretToken };
   const app = createHttpApp(client, config);
   app.requestTimeout = 30_000; // Bounds receipt of the request, not tool execution.
   app.headersTimeout = 15_000;
@@ -33,7 +33,9 @@ try {
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
-} catch (error) {
+}
+
+if (process.argv[1]?.endsWith('/http-main.js')) startHttp().catch(error => {
   console.error(error instanceof Error ? error.message : 'Could not start HTTP server.');
   process.exitCode = 1;
-}
+});

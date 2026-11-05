@@ -8,6 +8,7 @@ export interface HttpConfig {
   host: string;
   port: number;
   token?: string;
+  secretToken?: () => string | null;
 }
 
 export function readHttpConfig(env: NodeJS.ProcessEnv = process.env): HttpConfig {
@@ -40,8 +41,17 @@ export function createHttpApp(client: SkywardClient, config: HttpConfig) {
       }
     }
     if (req.url === '/healthz' && req.method === 'GET') return json(res, 200, { status: 'ok' });
+    const secretRoute = /^\/mcp\/([a-f0-9]{64})$/.exec(req.url || '');
+    let secretAuthorized = false;
+    if (secretRoute) {
+      const expected = config.secretToken?.();
+      secretAuthorized = !!expected && expected.length === 64 && timingSafeEqual(Buffer.from(secretRoute[1]), Buffer.from(expected));
+      if (!secretAuthorized) return json(res, 404, { error: 'Not found.' });
+      // Strip credentials before passing the request to the MCP transport.
+      req.url = '/mcp';
+    }
     if (req.url !== '/mcp') return json(res, 404, { error: 'Not found. MCP endpoint: /mcp' });
-    if (config.token) {
+    if (config.token && !secretAuthorized) {
       const expected = Buffer.from(`Bearer ${config.token}`);
       const supplied = Buffer.from(req.headers.authorization || '');
       if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {

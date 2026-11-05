@@ -8,8 +8,8 @@ import type { SkywardClient } from '../src/client.js';
 
 const fake = { listStudents: async () => ({ students: [{ studentId: '1', name: 'Example Student' }] }) } as unknown as SkywardClient;
 const token = 'test-token-with-at-least-32-characters';
-async function start(auth?: string) {
-  const app = createHttpApp(fake, { host: '127.0.0.1', port: 0, token: auth });
+async function start(auth?: string, secretToken?: () => string | null) {
+  const app = createHttpApp(fake, { host: '127.0.0.1', port: 0, token: auth, secretToken });
   await new Promise<void>(resolve => app.listen(0, '127.0.0.1', resolve));
   const address = app.address();
   assert.ok(address && typeof address !== 'string');
@@ -51,4 +51,24 @@ test('remote HTTP listener requires a token and valid configuration', () => {
   assert.throws(() => readHttpConfig({ SKYWARD_HTTP_TOKEN: 'short' }));
   assert.throws(() => readHttpConfig({ SKYWARD_HTTP_PORT: 'invalid' }));
   assert.equal(readHttpConfig({ SKYWARD_HTTP_HOST: '0.0.0.0', SKYWARD_HTTP_TOKEN: token }).host, '0.0.0.0');
+});
+
+
+test('secret URL supports MCP without headers, rejects old URLs, and leaves bearer access intact', async () => {
+  let secret: string | null = 'a'.repeat(64);
+  const service = await start(token, () => secret);
+  const client = new Client({ name: 'secret-test', version: '1' });
+  try {
+    await client.connect(new StreamableHTTPClientTransport(new URL(`${service.base}/mcp/${secret}`)));
+    assert.equal((await client.listTools()).tools.length, 3);
+    const old = secret;
+    secret = 'b'.repeat(64);
+    assert.equal((await fetch(`${service.base}/mcp/${old}`, { method: 'POST' })).status, 404);
+    assert.equal((await fetch(`${service.base}/mcp/${secret}`)).status, 405);
+    assert.equal((await fetch(`${service.base}/mcp/${secret}?extra=1`)).status, 404);
+    assert.equal((await fetch(`${service.base}/mcp/${secret}`, { headers: { Origin: 'https://evil.example' } })).status, 403);
+    secret = null;
+    assert.equal((await fetch(`${service.base}/mcp/${'b'.repeat(64)}`)).status, 404);
+    assert.equal((await fetch(`${service.base}/mcp`, { headers: { Authorization: `Bearer ${token}` } })).status, 405);
+  } finally { await client.close(); await service.close(); }
 });

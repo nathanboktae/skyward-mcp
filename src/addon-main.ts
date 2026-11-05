@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, chown } from 'node:fs/promises';
+import { SecretUrlStore } from './secret-url.js';
+import { startHttp } from './http-main.js';
 import { loadAddonToken } from './addon-token.js';
 import { createIngressApp } from './addon-ui.js';
 import { addonEnvironment } from './addon-options.js';
@@ -14,6 +16,9 @@ try {
   const env = addonEnvironment(options);
   env.SKYWARD_HTTP_TOKEN = await loadAddonToken('/data', env.SKYWARD_HTTP_TOKEN);
   Object.assign(process.env, env);
+  const secretDirectory = '/data/connection';
+  await mkdir(secretDirectory, { recursive: true, mode: 0o700 });
+  if (process.getuid?.() === 0) await chown(secretDirectory, 1000, 1000);
   // Supervisor writes root-owned options. Read them once, then drop privileges
   // before starting HTTP or launching Chromium. No host directories are mounted.
   if (process.platform === 'linux' && process.getuid?.() === 0) {
@@ -22,9 +27,10 @@ try {
     process.setuid!(1000);
   }
   process.env.HOME = '/home/node';
-  await import('./http-main.js');
-  if (process.exitCode) throw new Error('MCP server did not start.');
-  const ui = createIngressApp(env.SKYWARD_HTTP_TOKEN);
+  const secrets = new SecretUrlStore(secretDirectory);
+  await secrets.load();
+  await startHttp(secrets.current);
+  const ui = createIngressApp(env.SKYWARD_HTTP_TOKEN, secrets);
   await new Promise<void>((resolve, reject) => {
     ui.once('error', reject);
     ui.listen(8099, '0.0.0.0', resolve);

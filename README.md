@@ -8,7 +8,7 @@ The `skyward/` folder makes this repository a Home Assistant add-on repository. 
 
 [Add this repository to Home Assistant](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fnathanboktae%2Fskyward-mcp)
 
-See [add-on installation and configuration](skyward/DOCS.md). Configure Skyward credentials through HA's Configuration tab, start the add-on, and use **Open Web UI → Copy connection settings** to get the automatically generated token, then connect to `http://YOUR_HA_IP:3000/mcp` with a bearer header. This initial add-on release is experimental pending testing on real HA OS hardware.
+See [add-on installation and configuration](skyward/DOCS.md). Configure Skyward credentials through HA's Configuration tab, start the add-on, and use **Open Web UI → Copy connection settings** to get the automatically generated token, then connect to `http://YOUR_HA_IP:3000/mcp` with a bearer header. For ChatGPT, the setup page also supports an optional, independently rotatable secret URL behind your own public HTTPS tunnel or proxy; see the installation guide. This initial add-on release is experimental pending testing on real HA OS hardware.
 
 ## Setup
 

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { SkywardClient } from './client.js';
 import { SkywardError } from './domain.js';
 export function createServer(client: SkywardClient) {
-  const server=new McpServer({name:'skyward-mcp',version:'0.3.0'});
+  const server=new McpServer({name:'skyward-mcp',version:'0.4.0'});
   const annotations={readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true};
   const studentId=z.string().regex(/^\d+$/).max(30).describe('ID returned by list_students');
   const reply=async(work:()=>Promise<object>)=>{try {const data=await work();return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data as Record<string,unknown>};} catch(e) {return {isError:true,content:[{type:'text' as const,text:e instanceof SkywardError ? e.message : 'Skyward operation failed.'}]};}};

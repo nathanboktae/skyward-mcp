@@ -42,3 +42,12 @@ The endpoint exposes `list_students`, `get_student_schedule`, and `get_student_g
 - The browser is bundled in the image. No Chrome installation, host networking, Supervisor API access, or disabled Protection mode is required.
 
 The initial release is experimental until verified on a real HA OS installation. CI tests native ARM64 Linux, Chromium startup, the HA options entrypoint, and MCP HTTP discovery; it does not run a full Supervisor or use your school credentials.
+
+## ChatGPT secret URL (0.4.0+)
+
+1. Set up a public HTTPS tunnel or reverse proxy forwarding `/mcp` and `/mcp/*` to the app's port 3000. Preserve the full path. The app does not provision a domain, tunnel, or TLS certificate. Nabu Casa's HA UI address does not expose this port.
+2. Open **Web UI**, enter your public endpoint (for example `https://skyward.example.com/mcp`), and choose **Enable secret URL**. The endpoint field starts blank intentionally; enter the address reachable by your client. It is not saved across page reloads.
+3. Select **Copy secret URL**. In ChatGPT's custom MCP plugin setup, paste that URL and choose **No authentication**. The server authenticates using the secret path instead of an HTTP header. ChatGPT connectivity must be tested against your own public endpoint.
+4. Use **Rotate secret URL** to replace it, or **Disable secret URL** to revoke it. Old URLs stop working for new requests immediately; already-running tool calls may finish. Existing bearer-token clients keep working.
+
+Secret URL access defaults to disabled. Its separate 256-bit random credential is persisted in `/data/connection/secret-url.json` and survives restarts/updates; backups contain this credential. Only HA ingress can access the management controls, which also require a CSRF token. Anyone with the complete URL can query your configured account: do not share it publicly. Disable or redact request paths in tunnel/reverse-proxy access logs. The app does not log URLs, and strips the secret before handing requests to the MCP transport. Keep the setup page on ingress, not your public proxy.
