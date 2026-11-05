@@ -1,0 +1,32 @@
+name: Skyward MCP
+version: "0.2.0"
+slug: skyward_mcp
+description: Read-only Skyward students, class schedules, and grades over MCP
+url: https://github.com/nathanboktae/skyward-mcp
+arch:
+  - aarch64
+image: ghcr.io/nathanboktae/skyward-mcp
+startup: application
+boot: auto
+init: true
+timeout: 20
+stage: experimental
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: MCP Streamable HTTP (requires bearer token)
+watchdog: http://[HOST]:[PORT:3000]/healthz
+options:
+  skyward_url: https://www.q.wa-k12.net/lkwash/
+  username: ""
+  password: ""
+  mcp_token: ""
+  timezone: America/Los_Angeles
+  timeout_ms: 45000
+schema:
+  skyward_url: url
+  username: str(1,)
+  password: password(1,)
+  mcp_token: password(32,)
+  timezone: str(1,)
+  timeout_ms: int(1000,180000)

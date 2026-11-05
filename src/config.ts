@@ -1,7 +1,7 @@
 import { config as dotenv } from 'dotenv';
 import { fileURLToPath } from 'node:url';
 
-export interface Config { baseUrl: string; username: string; password: string; timeout: number; timezone: string }
+export interface Config { baseUrl: string; username: string; password: string; timeout: number; timezone: string; browser: 'chrome' | 'chromium' }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const required = (key: string) => { const v = env[key]; if (!v) throw new Error(`Missing ${key}. Configure your private .env file.`); return v; };
   let url: URL;
@@ -14,7 +14,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 180000) throw new Error('SKYWARD_TIMEOUT_MS must be 1000–180000.');
   const timezone = env.SKYWARD_TIMEZONE || 'America/Los_Angeles';
   try { new Intl.DateTimeFormat('en-US', { timeZone: timezone }); } catch { throw new Error('Invalid SKYWARD_TIMEZONE.'); }
-  return {baseUrl:url.href, username:required('SKYWARD_USERNAME'), password:required('SKYWARD_PASSWORD'), timeout, timezone};
+  const browser = env.SKYWARD_BROWSER || 'chrome';
+  if (browser !== 'chrome' && browser !== 'chromium') throw new Error('SKYWARD_BROWSER must be chrome or chromium.');
+  return {browser, baseUrl:url.href, username:required('SKYWARD_USERNAME'), password:required('SKYWARD_PASSWORD'), timeout, timezone};
 }
 export function loadConfig(): Config {
   const result = dotenv({path:process.env.SKYWARD_ENV_FILE || fileURLToPath(new URL('../.env', import.meta.url)), quiet:true});

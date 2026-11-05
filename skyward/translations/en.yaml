@@ -1,0 +1,19 @@
+configuration:
+  skyward_url:
+    name: Skyward district URL
+    description: HTTPS district root, such as https://www.q.wa-k12.net/lkwash/. Do not include session parameters.
+  username:
+    name: Skyward username
+  password:
+    name: Skyward password
+  mcp_token:
+    name: MCP access token
+    description: A random secret of at least 32 characters with no spaces. Configure the same bearer token in your MCP client.
+  timezone:
+    name: School timezone
+    description: IANA timezone used to select the current schedule week, such as America/Los_Angeles.
+  timeout_ms:
+    name: Skyward page timeout (milliseconds)
+    description: Timeout for each page load, not the total MCP tool call.
+network:
+  3000/tcp: MCP Streamable HTTP endpoint

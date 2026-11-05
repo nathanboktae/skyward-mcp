@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {extractStudents,extractGrades,extractSchedule} from '../dist/extract.js';
 test('DOM extraction handles duplicate cell IDs, hidden accessibility text, blanks, and dated class identity',async()=>{
- const browser=await chromium.launch({channel:'chrome',headless:true});
+ const browser=await chromium.launch({channel:process.env.SKYWARD_BROWSER === 'chromium' ? undefined : 'chrome',headless:true});
  try {
  const page=await browser.newPage();
  await page.setContent(`<div id="familyAccessHeaderSelect"><div class="familyAccessHeaderSelectTile" data-studentid=""></div><div class="familyAccessHeaderSelectTile" data-studentid="12" data-entity-name="Example School" data-entity-year="2026-2027"><span class="familyAccessStudentNameText">STUDENT,</span><span class="familyAccessStudentNameText">EXAMPLE</span></div></div>

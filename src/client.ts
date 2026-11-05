@@ -12,7 +12,7 @@ export class SkywardClient {
   // Serializing also avoids concurrent logins invalidating one another on Skyward.
   private run<T>(operation:(page:Page)=>Promise<T>):Promise<T> {
     return this.queue.run(async()=>{
-      this.browser ??= await chromium.launch({channel:'chrome',headless:true});
+      this.browser ??= await chromium.launch({channel:this.config.browser === 'chrome' ? 'chrome' : undefined,headless:true});
       const context = await this.browser.newContext({timezoneId:this.config.timezone});
       const page = await context.newPage();
       page.setDefaultTimeout(this.config.timeout);

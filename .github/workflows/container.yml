@@ -1,0 +1,95 @@
+name: Test and publish ARM64 add-on
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps --only-shell chromium
+      - name: Test source and manifest
+        run: npm test && npm run check
+        env:
+          SKYWARD_BROWSER: chromium
+      - name: Read release version
+        id: version
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [[ "$RELEASE_REF" == refs/tags/* && "$RELEASE_REF" != "refs/tags/v$version" ]]; then
+            echo 'Release tag must match package.json and skyward/config.yaml'
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ARM64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: skyward-mcp:test
+          build-args: BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Test actual add-on container with synthetic options
+        run: |
+          mkdir -p "$RUNNER_TEMP/skyward-data"
+          node --input-type=module <<'JS'
+          import { writeFileSync } from 'node:fs';
+          writeFileSync(`${process.env.RUNNER_TEMP}/skyward-data/options.json`, JSON.stringify({
+            skyward_url: 'https://example.org/district/', username: 'test-parent', password: 'synthetic-test-only',
+            mcp_token: 'synthetic-ci-token-at-least-32-characters', timezone: 'America/Los_Angeles', timeout_ms: 45000
+          }), { mode: 0o600 });
+          JS
+          docker run -d --init --name skyward-test \
+            -v "$RUNNER_TEMP/skyward-data:/data:ro" \
+            -v "$PWD/scripts/container-smoke.mjs:/app/container-smoke.mjs:ro" \
+            skyward-mcp:test
+          for attempt in $(seq 1 30); do
+            if docker exec skyward-test node -e "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec --user 1000:1000 \
+            -e SMOKE_TOKEN=synthetic-ci-token-at-least-32-characters \
+            skyward-test node /app/container-smoke.mjs
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          docker logs skyward-test 2>/dev/null || true
+          docker rm -f skyward-test 2>/dev/null || true
+      - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish tested image
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          image=ghcr.io/nathanboktae/skyward-mcp
+          docker tag skyward-mcp:test "$image:$VERSION"
+          docker push "$image:$VERSION"
