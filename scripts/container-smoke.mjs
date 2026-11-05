@@ -26,6 +26,7 @@ try {
 } finally { await browser.close(); }
 assert.equal((await fetch('http://127.0.0.1:3000/healthz')).status, 200);
 assert.equal((await fetch('http://127.0.0.1:3000/mcp', { method: 'POST' })).status, 401);
+assert.equal((await fetch('http://127.0.0.1:8099/', { headers: { 'X-Forwarded-For': '172.30.32.2' } })).status, 403);
 const client = new Client({ name: 'container-smoke', version: '1' });
 try {
   await client.connect(new StreamableHTTPClientTransport(new URL('http://127.0.0.1:3000/mcp'), {

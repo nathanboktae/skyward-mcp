@@ -4,7 +4,7 @@ const optionsSchema = z.object({
   skyward_url: z.string().min(1),
   username: z.string().min(1),
   password: z.string().min(1),
-  mcp_token: z.string().min(32).regex(/^\S+$/),
+  mcp_token: z.string().min(32).regex(/^\S+$/).nullish(),
   timezone: z.string().min(1).default('America/Los_Angeles'),
   timeout_ms: z.number().int().min(1000).max(180000).default(45000),
 });
@@ -21,7 +21,7 @@ export function addonEnvironment(input: unknown): NodeJS.ProcessEnv {
     SKYWARD_BASE_URL: options.skyward_url,
     SKYWARD_USERNAME: options.username,
     SKYWARD_PASSWORD: options.password,
-    SKYWARD_HTTP_TOKEN: options.mcp_token,
+    SKYWARD_HTTP_TOKEN: options.mcp_token ?? undefined,
     SKYWARD_TIMEZONE: options.timezone,
     SKYWARD_TIMEOUT_MS: String(options.timeout_ms),
     SKYWARD_BROWSER: 'chromium',

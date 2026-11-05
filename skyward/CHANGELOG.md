@@ -1,3 +1,9 @@
+# 0.3.0
+
+- Generate and persist the MCP access token automatically; manual token overrides remain compatible.
+- Add a Home Assistant-authenticated setup page with editable endpoint and copyable connection settings.
+- Keep the setup page on an internal ingress-only port.
+
 # Changelog
 
 ## 0.2.0

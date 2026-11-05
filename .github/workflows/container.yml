@@ -57,11 +57,11 @@ jobs:
           import { writeFileSync } from 'node:fs';
           writeFileSync(`${process.env.RUNNER_TEMP}/skyward-data/options.json`, JSON.stringify({
             skyward_url: 'https://example.org/district/', username: 'test-parent', password: 'synthetic-test-only',
-            mcp_token: 'synthetic-ci-token-at-least-32-characters', timezone: 'America/Los_Angeles', timeout_ms: 45000
+            timezone: 'America/Los_Angeles', timeout_ms: 45000
           }), { mode: 0o600 });
           JS
           docker run -d --init --name skyward-test \
-            -v "$RUNNER_TEMP/skyward-data:/data:ro" \
+            -v "$RUNNER_TEMP/skyward-data:/data" \
             -v "$PWD/scripts/container-smoke.mjs:/app/container-smoke.mjs:ro" \
             skyward-mcp:test
           for attempt in $(seq 1 30); do
@@ -70,9 +70,23 @@ jobs:
             fi
             sleep 1
           done
-          docker exec --user 1000:1000 \
-            -e SMOKE_TOKEN=synthetic-ci-token-at-least-32-characters \
-            skyward-test node /app/container-smoke.mjs
+          docker exec skyward-test node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            import { spawnSync } from "node:child_process";
+            const token = readFileSync("/data/mcp-token", "utf8");
+            const result = spawnSync(process.execPath, ["/app/container-smoke.mjs"], {
+              uid: 1000, gid: 1000, stdio: "inherit", env: { ...process.env, SMOKE_TOKEN: token }
+            });
+            process.exit(result.status ?? 1);
+          '
+          before=$(docker exec skyward-test sha256sum /data/mcp-token)
+          docker restart skyward-test
+          for attempt in $(seq 1 30); do
+            if docker exec skyward-test node -e "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then break; fi
+            sleep 1
+          done
+          after=$(docker exec skyward-test sha256sum /data/mcp-token)
+          test "$before" = "$after"
       - name: Container logs and cleanup
         if: always()
         run: |

@@ -1,5 +1,5 @@
 name: Skyward MCP
-version: "0.2.0"
+version: "0.3.0"
 slug: skyward_mcp
 description: Read-only Skyward students, class schedules, and grades over MCP
 url: https://github.com/nathanboktae/skyward-mcp
@@ -11,6 +11,10 @@ boot: auto
 init: true
 timeout: 20
 stage: experimental
+ingress: true
+ingress_port: 8099
+panel_admin: true
+panel_icon: mdi:school
 ports:
   3000/tcp: 3000
 ports_description:
@@ -20,13 +24,12 @@ options:
   skyward_url: https://www.q.wa-k12.net/lkwash/
   username: null
   password: null
-  mcp_token: null
   timezone: America/Los_Angeles
   timeout_ms: 45000
 schema:
   skyward_url: url
   username: str(1,)
   password: password(1,)
-  mcp_token: password(32,)
+  mcp_token: password(32,)?
   timezone: str(1,)
   timeout_ms: int(1000,180000)

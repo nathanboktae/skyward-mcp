@@ -7,8 +7,8 @@ configuration:
   password:
     name: Skyward password
   mcp_token:
-    name: MCP access token
-    description: A random secret of at least 32 characters with no spaces. Configure the same bearer token in your MCP client.
+    name: MCP access token override (optional)
+    description: Leave unset to generate a persistent token automatically. Open Web UI to copy your connection settings. Existing manual tokens remain supported.
   timezone:
     name: School timezone
     description: IANA timezone used to select the current schedule week, such as America/Los_Angeles.
