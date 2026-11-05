@@ -1,0 +1,32 @@
+{
+  "name": "skyward-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only Skyward Qmlativ Family Access MCP server powered by headless Chrome",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "skyward-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "npm run build && node dist/index.js",
+    "test": "npm run build && tsx --test test/*.test.ts",
+    "check": "tsc --noEmit",
+    "test:live": "npm run build && tsx test/live.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "dotenv": "^17.2.3",
+    "playwright": "^1.56.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
