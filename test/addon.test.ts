@@ -17,6 +17,7 @@ test('HA options feed the existing browser and HTTP configuration without shell 
   const config = readConfig(env);
   assert.equal(config.password, options.password);
   assert.equal(config.browser, 'chromium');
+  assert.equal(config.stateDirectory, '/data/browser-state');
   assert.equal(config.timeout, 60000);
   assert.equal(readHttpConfig(env).host, '0.0.0.0');
   assert.equal(readHttpConfig(env).token, options.mcp_token);

@@ -20,6 +20,8 @@ try {
   const secretDirectory = '/data/connection';
   await mkdir(secretDirectory, { recursive: true, mode: 0o700 });
   if (process.getuid?.() === 0) await chown(secretDirectory, 1000, 1000);
+  await mkdir(env.SKYWARD_STATE_DIR!, { recursive: true, mode: 0o700 });
+  if (process.getuid?.() === 0) await chown(env.SKYWARD_STATE_DIR!, 1000, 1000);
   let bridge: BridgeInstaller | undefined;
   try {
     bridge = new BridgeInstaller('/homeassistant/custom_components/skyward_mcp', '/app/bridge/skyward_mcp', supervisorHostname);

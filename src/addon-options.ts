@@ -25,6 +25,7 @@ export function addonEnvironment(input: unknown): NodeJS.ProcessEnv {
     SKYWARD_TIMEZONE: options.timezone,
     SKYWARD_TIMEOUT_MS: String(options.timeout_ms),
     SKYWARD_BROWSER: 'chromium',
+    SKYWARD_STATE_DIR: '/data/browser-state',
     SKYWARD_HTTP_HOST: '0.0.0.0',
     SKYWARD_HTTP_PORT: '3000',
   };

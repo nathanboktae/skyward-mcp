@@ -1,3 +1,9 @@
+## 0.5.1
+
+- Persist Skyward cookies and browser storage across queries, app restarts, and upgrades.
+- Reuse valid login sessions; retain remembered-device cookies when signing in again.
+- Isolate saved state by district and username, with private atomic files.
+
 ## 0.5.0
 
 - Bundle an HA integration that forwards MCP requests through HA/Nabu Casa.

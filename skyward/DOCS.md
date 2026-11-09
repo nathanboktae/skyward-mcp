@@ -65,3 +65,7 @@ The integration forwards requests only to this app's internal hostname on port 3
 App upgrades refresh an already-installed managed bridge at startup; restart HA Core after bridge updates. Installing the app alone does not modify YAML or HA's `.storage` configuration. Bridge setup is an explicit step, and the app never restarts HA automatically. Removing the Skyward integration in Devices & services disables its routes. Removing the app alone leaves the integration files; remove the integration entry first and delete only its `custom_components/skyward_mcp` directory if no longer wanted, then restart HA.
 
 HA Core debug HTTP logs or external request logs can include URLs. Avoid enabling request-path debug/access logging when using secret URLs. Never share the full URL.
+
+## Remembered Skyward device
+
+Cookies, local storage, and IndexedDB are saved automatically in `/data/browser-state`, separately for each district and username. Valid sessions are reused; when they expire, the app logs in using the saved browser identity. This state survives restarts and upgrades and is included in app data backups. Treat backups as secrets. Skyward may still request verification or send a login notification after its own device/session expiry. Deleting this directory resets the remembered device.

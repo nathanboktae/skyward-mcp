@@ -1,4 +1,5 @@
 import { chromium, type Browser, type Page } from 'playwright';
+import { BrowserStateStore } from './browser-state.js';
 import type { Config } from './config.js';
 import { extractStudents, extractGrades, extractSchedule } from './extract.js';
 import { isoDate, resolveTerm, SerialQueue, SkywardError } from './domain.js';
@@ -6,36 +7,42 @@ import { isoDate, resolveTerm, SerialQueue, SkywardError } from './domain.js';
 export class SkywardClient {
   private browser?: Browser;
   private queue = new SerialQueue();
-  constructor(private config: Config) {}
+  private state: BrowserStateStore;
+  constructor(private config: Config) { this.state = new BrowserStateStore(config); }
   async close() { await this.browser?.close(); this.browser=undefined; }
-  // Each operation gets fresh authentication and isolated selection/filter state.
+  // Each operation restores browser identity and any valid authentication.
   // Serializing also avoids concurrent logins invalidating one another on Skyward.
   private run<T>(operation:(page:Page)=>Promise<T>):Promise<T> {
     return this.queue.run(async()=>{
       this.browser ??= await chromium.launch({channel:this.config.browser === 'chrome' ? 'chrome' : undefined,headless:true});
-      const context = await this.browser.newContext({timezoneId:this.config.timezone});
+      const context = await this.browser.newContext({timezoneId:this.config.timezone, storageState:await this.state.load()});
       const page = await context.newPage();
       page.setDefaultTimeout(this.config.timeout);
       page.setDefaultNavigationTimeout(this.config.timeout);
       try {
         await page.goto(this.config.baseUrl,{waitUntil:'domcontentloaded'});
-        await page.locator('#UserName').waitFor();
-        // Never send credentials through an unexpected redirect or form destination.
-        const origin=new URL(this.config.baseUrl).origin;
-        const action=await page.locator('#Password').evaluate(e=>(e as HTMLInputElement).form?.action);
-        if (new URL(page.url()).origin!==origin || !action || new URL(action).origin!==origin) throw new SkywardError('Unexpected login destination; credentials were not submitted.');
-        await page.locator('#UserName').fill(this.config.username);
-        await page.locator('#Password').fill(this.config.password);
-        await page.getByRole('button',{name:'Sign In',exact:true}).click();
-        try { await page.locator('#familyAccessHeaderSelect').waitFor(); }
-        catch { throw new SkywardError('Skyward login did not reach Family Access. Check credentials, account lockout, or an interactive authentication requirement.'); }
+        await page.locator('#UserName, #familyAccessHeaderSelect').first().waitFor();
+        if (!await page.locator('#familyAccessHeaderSelect').isVisible()) {
+          // Never send credentials through an unexpected redirect or form destination.
+          const origin=new URL(this.config.baseUrl).origin;
+          const action=await page.locator('#Password').evaluate(e=>(e as HTMLInputElement).form?.action);
+          if (new URL(page.url()).origin!==origin || !action || new URL(action).origin!==origin) throw new SkywardError('Unexpected login destination; credentials were not submitted.');
+          await page.locator('#UserName').fill(this.config.username);
+          await page.locator('#Password').fill(this.config.password);
+          await page.getByRole('button',{name:'Sign In',exact:true}).click();
+          try { await page.locator('#familyAccessHeaderSelect').waitFor(); }
+          catch { throw new SkywardError('Skyward login did not reach Family Access. Check credentials, account lockout, or an interactive authentication requirement.'); }
+        }
         await this.settle(page);
+        await this.state.save(context);
         return await operation(page);
       } catch(error) {
         if (error instanceof SkywardError) throw error;
         // Playwright errors can include filled values, HTML, and session URLs.
         throw new SkywardError('Skyward did not finish loading the expected view. Retry the query; if it persists, the adapter needs inspection.', {cause:error});
-      } finally { await context.close(); }
+      } finally {
+        try { await this.state.save(context); } finally { await context.close(); }
+      }
     });
   }
   private async settle(page:Page) { await page.waitForLoadState('networkidle'); }

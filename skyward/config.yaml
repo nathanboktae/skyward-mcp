@@ -1,5 +1,5 @@
 name: Skyward MCP
-version: "0.5.0"
+version: "0.5.1"
 slug: skyward_mcp
 description: Read-only Skyward students, class schedules, and grades over MCP
 url: https://github.com/nathanboktae/skyward-mcp

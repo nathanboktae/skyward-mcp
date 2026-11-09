@@ -9,3 +9,5 @@ test-results/
 artifacts/
 
 __pycache__/
+
+.skyward-state/
