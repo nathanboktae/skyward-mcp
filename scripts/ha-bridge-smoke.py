@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from aiohttp import web, ClientSession
 from homeassistant.core import HomeAssistant
+from homeassistant import loader
 from homeassistant.bootstrap import async_from_config_dict
 
 async def main():
@@ -12,7 +13,7 @@ async def main():
     (target / 'connection.json').write_text(json.dumps({'hostname': 'localhost'}))
     secret = 'a' * 64
     async def backend(request):
-        if request.path != '/mcp/' + secret:
+        if request.path != '/mcp/' + secret and request.headers.get('Authorization') != 'Bearer synthetic-test-token':
             return web.Response(status=404)
         data = await request.json()
         return web.json_response({'jsonrpc': '2.0', 'id': data.get('id'), 'result': {'tools': []}})
@@ -20,6 +21,7 @@ async def main():
     runner = web.AppRunner(app, access_log=None); await runner.setup()
     await web.TCPSite(runner, '127.0.0.1', 3000).start()
     hass = HomeAssistant(str(config))
+    loader.async_setup(hass)
     try:
         await async_from_config_dict({'http': {'server_host': '127.0.0.1', 'server_port': 8123}}, hass)
         result = await hass.config_entries.flow.async_init('skyward_mcp', context={'source':'user'})
@@ -35,6 +37,8 @@ async def main():
                 assert (await response.json())['result'] == {'tools': []}
             async with client.post('http://127.0.0.1:8123/api/skyward_mcp/mcp/' + 'b'*64, json={}) as response:
                 assert response.status == 404, response.status
+            async with client.post('http://127.0.0.1:8123/api/skyward_mcp/mcp', json={'id': 2}, headers={'Authorization':'Bearer synthetic-test-token'}) as response:
+                assert response.status == 200, (response.status, await response.text())
         print('Real HA Core config flow, route registration, and authenticated MCP forwarding passed.')
     finally:
         await hass.async_stop(force=True)
