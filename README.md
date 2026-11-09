@@ -81,6 +81,7 @@ Allow a generous tool-call timeout (several minutes for schedules). Reading date
 | --- | --- | --- |
 | `list_students` | none | Student IDs, names, schools, school years |
 | `get_student_schedule` | `studentId` | Current week's classes, stable class IDs, teachers, rooms, terms, enrollment dates, dated meetings with period and local time |
+| `get_student_assignments` | `studentId`, `classId`, and exactly one of `quarter`, `semester`, `term` | Assignments with category, due date, letter grade, percentage, points earned/possible, and attempts |
 | `get_student_grades` | `studentId`, optional `classId`, and at most one of `quarter`, `semester`, `term` | All-year grade columns and class grades, optionally filtered |
 
 Examples:
@@ -93,7 +94,9 @@ Examples:
 
 Lake Washington uses `T1`–`T4` for quarter columns and `S1`/`S2` for semesters. Exact labels are returned as `availableTerms`; `quarter` also supports districts exposing `Q1`–`Q4`. Blank grades are `null`, not zero. A semester grade can be in progress; it is not necessarily a final report-card grade. No grade averages are calculated.
 
-V1 covers the current school year. Assignments/coursework, historical school years, SSO/MFA automation, and grade writes are outside this version. Class IDs deliberately match between schedules and grades so coursework can be added beneath a class later.
+All tools cover the current school year. For assignments, first obtain a `classId` from grades or schedules, then call `get_student_assignments`, for example `{"studentId":"12345","classId":"67890","quarter":1}`. Assignment dates are due dates in `YYYY-MM-DD` format. Numeric `pointsEarned`, `pointsPossible`, and `percentage` preserve zero and use null for blank/non-numeric values; `pointsText`, `scoreText`, and `grade` retain the site's displayed notation (such as excused marks). Category totals are excluded. If Skyward does not expose a grade-detail link for a term, the tool reports that the breakdown is unavailable. It does not infer that there are no assignments.
+
+Historical school years, assignment detail/attachment downloads, SSO/MFA automation, and grade writes remain outside this version.
 
 ## Implementation
 

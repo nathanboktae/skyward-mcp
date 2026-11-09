@@ -35,3 +35,46 @@ export function extractSchedule() {
       period:text(period?.querySelector('.displayPeriodCodeDiv')),displayPeriodId:e.getAttribute('data-displayperiodid')!};
   });
 }
+
+// Grade breakdowns contain category totals alongside assignments. Only rows with
+// assignment IDs are records; never turn totals or blank scores into assignments/zeros.
+export function extractAssignments() {
+  const root = document.querySelector('#GradeBucketAssignmentsSegmentedOuterContainer');
+  if (!root) return null;
+  const clean = (element: Element | null | undefined) => {
+    if (!element) return null;
+    const copy = element.cloneNode(true) as Element;
+    copy.querySelectorAll('.ariadescription,.sr-only').forEach(e => e.remove());
+    return copy.textContent?.replace(/\s+/g, ' ').trim() || null;
+  };
+  const number = (text: string | null | undefined) => {
+    const value = text?.replace(/,/g, '').trim();
+    return value && /^-?\d+(?:\.\d+)?$/.test(value) ? Number(value) : null;
+  };
+  const header = root.querySelector('.unlockedHeaderTableRow');
+  const columns = Array.from(header?.querySelectorAll('.headerTextDiv') || []).map(e => clean(e) || '');
+  const assignments = [];
+  let category: string | null = null;
+  for (const row of root.querySelectorAll('tr[id*="_unlockedRow"]')) {
+    const cells = Array.from(row.children).filter(e => e.classList.contains('browseDataCell'));
+    const field = (name: string) => clean(cells[columns.indexOf(name)]);
+    if (row.className.includes('segmentedBrowseParentRow')) { category = field('Description'); continue; }
+    const link = row.querySelector('[data-assignment-id]');
+    if (!link) continue;
+    const pointsText = field('Points Earned');
+    const points = pointsText?.split('/');
+    const scoreText = field('Score');
+    assignments.push({
+      assignmentId: link.getAttribute('data-assignment-id')!,
+      name: field('Description'), category, dueDate: field('Due Date'),
+      grade: field('Grade'), scoreText, pointsText,
+      pointsEarned: points?.length === 2 ? number(points[0]) : null,
+      pointsPossible: points?.length === 2 ? number(points[1]) : null,
+      percentage: scoreText?.endsWith('%') ? number(scoreText.slice(0, -1)) : null,
+      attempts: number(field('Attempts')),
+    });
+  }
+  const reference = root.querySelector('.SegmentedAssignmentsReferenceInformation');
+  const termCell = reference?.querySelectorAll('.SegmentedAssignmentsInformationCell')[1];
+  return {columns, term: clean(termCell?.querySelector('.visualLabel')), assignments};
+}

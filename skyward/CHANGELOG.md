@@ -1,3 +1,9 @@
+## 0.6.0
+
+- Add get_student_assignments for a student, class, and quarter/semester/exact term.
+- Return assignment IDs, categories, due dates, grades, percentages, earned/possible points, and attempts.
+- Preserve blank/non-numeric scores and exclude category totals.
+
 ## 0.5.1
 
 - Persist Skyward cookies and browser storage across queries, app restarts, and upgrades.

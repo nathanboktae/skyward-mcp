@@ -69,3 +69,7 @@ HA Core debug HTTP logs or external request logs can include URLs. Avoid enablin
 ## Remembered Skyward device
 
 Cookies, local storage, and IndexedDB are saved automatically in `/data/browser-state`, separately for each district and username. Valid sessions are reused; when they expire, the app logs in using the saved browser identity. This state survives restarts and upgrades and is included in app data backups. Treat backups as secrets. Skyward may still request verification or send a login notification after its own device/session expiry. Deleting this directory resets the remembered device.
+
+## Class assignments
+
+Use `get_student_assignments` with a student ID, a class ID from grades/schedule, and exactly one quarter, semester, or term. Results include due dates, categories, grades, percentage scores, earned/possible points, and attempt counts. Blank/non-numeric scores stay null, and raw score notation is retained. Only the current school year is supported.

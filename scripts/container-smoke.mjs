@@ -42,6 +42,6 @@ try {
   await client.connect(new StreamableHTTPClientTransport(new URL('http://127.0.0.1:3000/mcp'), {
     requestInit: { headers: { Authorization: `Bearer ${process.env.SMOKE_TOKEN}` } },
   }));
-  assert.equal((await client.listTools()).tools.length, 3);
+  assert.equal((await client.listTools()).tools.length, 4);
 } finally { await client.close(); }
 console.log('ARM64 Chromium, non-root HA entrypoint, health check, authentication, and MCP discovery passed.');

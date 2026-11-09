@@ -13,6 +13,13 @@ try {
   assert.ok(quarter.classes.length);assert.ok(semester.classes.length);
   assert.ok(quarter.classes.every(c=>c.grades.length===1));
   assert.ok(semester.classes.every(c=>c.grades.length===1));
+  const course=quarter.classes.find(c=>c.grades.some(g=>g.grade));
+  assert.ok(course);
+  for (const query of [{quarter:1},{semester:1}]) {
+   const result=await client.getAssignments(student.studentId,course.classId,query);
+   assert.ok(result.assignments.every(a=>a.assignmentId && a.name));
+   console.log(`Student ${i+1}: ${result.selectedTerm} assignment query passed (${result.assignments.length} rows).`);
+  }
   const schedule=await client.getSchedule(student.studentId);
   assert.ok(schedule.classes.length);
   assert.ok(schedule.classes.some(c=>quarter.classes.some(g=>g.classId===c.classId)));

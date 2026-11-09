@@ -22,7 +22,7 @@ test('HTTP MCP handshake, discovery, and tool invocation with bearer authenticat
   const client = new Client({ name: 'http-test', version: '1' });
   try {
     await client.connect(new StreamableHTTPClientTransport(new URL(`${service.base}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
-    assert.equal((await client.listTools()).tools.length, 3);
+    assert.equal((await client.listTools()).tools.length, 4);
     const result = await client.callTool({ name: 'list_students', arguments: {} });
     assert.deepEqual(result.structuredContent, { students: [{ studentId: '1', name: 'Example Student' }] });
     assert.equal((await fetch(`${service.base}/healthz`)).status, 200);
@@ -60,7 +60,7 @@ test('secret URL supports MCP without headers, rejects old URLs, and leaves bear
   const client = new Client({ name: 'secret-test', version: '1' });
   try {
     await client.connect(new StreamableHTTPClientTransport(new URL(`${service.base}/mcp/${secret}`)));
-    assert.equal((await client.listTools()).tools.length, 3);
+    assert.equal((await client.listTools()).tools.length, 4);
     const old = secret;
     secret = 'b'.repeat(64);
     assert.equal((await fetch(`${service.base}/mcp/${old}`, { method: 'POST' })).status, 404);

@@ -15,7 +15,7 @@ test('bridge installs and updates only its managed directory with fixed backend 
     await installer.install();
     assert.equal(await installer.installed(), true);
     assert.deepEqual(JSON.parse(await readFile(join(target, 'connection.json'), 'utf8')), { hostname: 'example-skyward-mcp' });
-    assert.equal(JSON.parse(await readFile(join(target, 'manifest.json'), 'utf8')).version, '0.5.1');
+    assert.equal(JSON.parse(await readFile(join(target, 'manifest.json'), 'utf8')).version, '0.6.0');
     await installer.install();
     const bad = new BridgeInstaller(target, resolve('bridge/skyward_mcp'), async () => 'evil.example/path');
     await assert.rejects(bad.install());

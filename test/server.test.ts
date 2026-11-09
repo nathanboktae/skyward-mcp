@@ -6,13 +6,15 @@ import {createServer} from '../src/server.js';
 import type {SkywardClient} from '../src/client.js';
 import {SkywardError} from '../src/domain.js';
 test('MCP handshake, schemas, structured results, and safe errors',async()=>{
- const fake={listStudents:async()=>({students:[{studentId:'1',name:'Example Student'}]}),getSchedule:async()=>{throw Error('secret internal data');},getGrades:async()=>{throw new SkywardError('Term unavailable.');}} as unknown as SkywardClient;
+ const fake={listStudents:async()=>({students:[{studentId:'1',name:'Example Student'}]}),getSchedule:async()=>{throw Error('secret internal data');},getAssignments:async(studentId:string,classId:string,query:object)=>({studentId,classId,...query,assignments:[]}),getGrades:async()=>{throw new SkywardError('Term unavailable.');}} as unknown as SkywardClient;
  const server=createServer(fake),client=new Client({name:'test',version:'1'});
  const [a,b]=InMemoryTransport.createLinkedPair();
  try {await server.connect(a);await client.connect(b);
- const {tools}=await client.listTools();assert.deepEqual(tools.map(t=>t.name),['list_students','get_student_schedule','get_student_grades']);assert.ok(tools.every(t=>t.annotations?.readOnlyHint));
+ const {tools}=await client.listTools();assert.deepEqual(tools.map(t=>t.name),['list_students','get_student_schedule','get_student_grades','get_student_assignments']);assert.ok(tools.every(t=>t.annotations?.readOnlyHint));
  const students=await client.callTool({name:'list_students',arguments:{}});assert.deepEqual(students.structuredContent,{students:[{studentId:'1',name:'Example Student'}]});
  const failure=await client.callTool({name:'get_student_schedule',arguments:{studentId:'1'}});assert.equal(failure.isError,true);assert.ok(!JSON.stringify(failure).includes('secret'));
  const invalid=await client.callTool({name:'get_student_grades',arguments:{studentId:'1',quarter:5}});assert.equal(invalid.isError,true);
+ const assignments=await client.callTool({name:'get_student_assignments',arguments:{studentId:'1',classId:'123',quarter:1}});assert.deepEqual(assignments.structuredContent,{studentId:'1',classId:'123',quarter:1,assignments:[]});
+ const badClass=await client.callTool({name:'get_student_assignments',arguments:{studentId:'1',classId:'bad',quarter:1}});assert.equal(badClass.isError,true);
  }finally {await client.close();await server.close();}
 });

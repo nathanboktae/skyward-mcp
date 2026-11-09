@@ -1,7 +1,7 @@
 import { chromium, type Browser, type Page } from 'playwright';
 import { BrowserStateStore } from './browser-state.js';
 import type { Config } from './config.js';
-import { extractStudents, extractGrades, extractSchedule } from './extract.js';
+import { extractStudents, extractGrades, extractSchedule, extractAssignments } from './extract.js';
 import { isoDate, resolveTerm, SerialQueue, SkywardError } from './domain.js';
 
 export class SkywardClient {
@@ -84,6 +84,35 @@ export class SkywardClient {
       if (query.classId) classes=classes.filter(c=>c.classId===query.classId);
       if (query.classId && !classes.length) throw new SkywardError('No grade row matches this classId.');
       return {student,availableTerms,selectedTerm:term || null,classes:classes.map(c=>({...c,grades:c.grades.filter(g=>!term||g.term===term)})),fetchedAt:new Date().toISOString()};
+    });
+  }
+  getAssignments(studentId:string, classId:string, query:{quarter?:number;semester?:number;term?:string}) {
+    if (!/^\d{1,30}$/.test(classId)) throw new SkywardError('Invalid classId. Use an ID from get_student_grades or get_student_schedule.');
+    if ([query.quarter,query.semester,query.term].filter(v=>v!==undefined).length !== 1) throw new SkywardError('Supply exactly one of quarter, semester, or term.');
+    return this.run(async page=>{
+      const student=await this.open(page,studentId,'studentGrades','/Grading/StudentSection/FamilyAccess');
+      const filter=page.getByRole('link',{name:'All Year',exact:true});
+      if (await filter.getAttribute('aria-current')!=='true') await this.change(page,()=>filter.click());
+      const tables=await page.evaluate(extractGrades);
+      const table=tables.find(t=>t.rows.some(c=>c.classId===classId));
+      if (!table) throw new SkywardError('No grade row matches this classId for this student.');
+      const term=resolveTerm(table.columns.slice(2),query)!;
+      const course=table.rows.find(c=>c.classId===classId)!;
+      const row=page.locator('.browse[id^="StudentGrades-"] tr.browseRow[id*="_unlockedRow"]')
+        .filter({has:page.locator(`[data-studentsectionid="${classId}"]`)});
+      const link=row.locator(':scope > .browseDataCell').nth(table.columns.indexOf(term)).locator('.linkPanelButton');
+      if (!await link.count()) throw new SkywardError('Skyward has no assignment breakdown for this class and term. The grade may be unpublished or not applicable.');
+      await link.click();
+      // The panel shell and its assignment table load in two separate requests.
+      const panel=page.locator('#GradeBucketAssignmentsSegmentedOuterContainer');
+      await panel.locator('.unlockedHeaderTableRow .headerTextDiv').first().waitFor();
+      await this.settle(page);
+      const data=await page.evaluate(extractAssignments);
+      if (!data || !['Description','Due Date','Points Earned'].every(c=>data.columns.includes(c)) || data.term!==term || data.assignments.some(a=>!a.name || !/^\d+$/.test(a.assignmentId))) {
+        throw new SkywardError('Assignment breakdown structure or selected term was not recognized.');
+      }
+      return {student, class:{classId,name:course.name,courseCode:course.courseCode}, selectedTerm:term,
+        assignments:data.assignments.map(a=>({...a,dueDate:isoDate(a.dueDate)})), fetchedAt:new Date().toISOString()};
     });
   }
   getSchedule(studentId:string) {

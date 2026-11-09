@@ -8,7 +8,7 @@ COPY src ./src
 RUN npm run build && npm prune --omit=dev --ignore-scripts
 
 FROM node:22-bookworm-slim
-ARG BUILD_VERSION=0.5.1
+ARG BUILD_VERSION=0.6.0
 LABEL org.opencontainers.image.title="Skyward MCP" \
       org.opencontainers.image.description="Skyward Family Access MCP server for Home Assistant" \
       org.opencontainers.image.source="https://github.com/nathanboktae/skyward-mcp" \
