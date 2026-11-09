@@ -1,5 +1,5 @@
 name: Skyward MCP
-version: "0.4.0"
+version: "0.4.1"
 slug: skyward_mcp
 description: Read-only Skyward students, class schedules, and grades over MCP
 url: https://github.com/nathanboktae/skyward-mcp
@@ -18,7 +18,7 @@ panel_icon: mdi:school
 ports:
   3000/tcp: 3000
 ports_description:
-  3000/tcp: MCP Streamable HTTP (requires bearer token)
+  3000/tcp: MCP Streamable HTTP (bearer token or secret URL)
 watchdog: http://[HOST]:[PORT:3000]/healthz
 options:
   skyward_url: https://www.q.wa-k12.net/lkwash/

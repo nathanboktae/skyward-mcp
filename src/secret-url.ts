@@ -14,6 +14,7 @@ export class SecretUrlStore {
       this.token = value;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw new Error('Cannot read secret URL configuration.');
+      await this.change('rotate');
     }
   }
   change(action: 'rotate' | 'disable'): Promise<void> {

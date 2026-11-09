@@ -107,6 +107,8 @@ test('connection page renders, edits endpoint, and copies settings with manual f
     const endpoint = page.getByLabel('MCP server URL');
     assert.equal(await endpoint.inputValue(), '');
     await endpoint.fill('https://mcp.example.org/mcp');
+    await page.reload();
+    assert.equal(await endpoint.inputValue(), 'https://mcp.example.org/mcp');
     const settings = JSON.parse(await page.getByLabel('Connection settings').inputValue());
     assert.equal(settings.mcpServers.skyward.url, 'https://mcp.example.org/mcp');
     assert.equal(settings.mcpServers.skyward.headers.Authorization, `Bearer ${options.mcp_token}`);
@@ -119,7 +121,10 @@ test('connection page renders, edits endpoint, and copies settings with manual f
     await page.getByRole('button', { name: 'Copy secret URL', exact: true }).click();
     assert.equal(await page.evaluate(() => (window as any).copied), 'https://mcp.example.org/mcp/' + 'c'.repeat(64));
     await endpoint.fill('http://lan.example:3000/mcp');
-    assert.equal(await page.getByRole('button', { name: 'Copy secret URL', exact: true }).isEnabled(), false);
+    assert.equal(await page.locator('#secret').inputValue(), 'http://lan.example:3000/mcp/' + 'c'.repeat(64));
+    await endpoint.fill('');
+    assert.equal(await page.locator('#secret').inputValue(), '/mcp/' + 'c'.repeat(64));
+    assert.ok(await page.getByRole('button', { name: 'Copy secret path', exact: true }).isEnabled());
     await page.getByRole('button', { name: 'Disable secret URL', exact: true }).click();
     await page.getByRole('button', { name: 'Enable secret URL', exact: true }).waitFor();
     assert.equal(await page.locator('#secret').inputValue(), '');
@@ -139,12 +144,13 @@ test('secret URL changes require ingress and CSRF, persist and can be revoked', 
   const dir = await mkdtemp(join(tmpdir(), 'skyward-url-'));
   try {
     const store = new SecretUrlStore(dir); await store.load();
-    assert.equal(store.current(), null);
+    const initial = store.current(); assert.match(initial!, /^[a-f0-9]{64}$/);
+    const boot = new SecretUrlStore(dir); await boot.load(); assert.equal(boot.current(), initial);
     let status = 0;
     const res = { setHeader() {}, writeHead(s: number) { status = s; }, end() {} };
     for (const [peer, csrf] of [['127.0.0.1', 'valid'], ['172.30.32.2', 'wrong']]) {
       await handleIngress({ socket: { remoteAddress: peer }, method: 'POST', url: '/secret/rotate', headers: { 'x-skyward-csrf': csrf } } as any, res as any, options.mcp_token, store, 'valid');
-      assert.equal(status, 403); assert.equal(store.current(), null);
+      assert.equal(status, 403); assert.equal(store.current(), initial);
     }
     await handleIngress({ socket: { remoteAddress: '172.30.32.2' }, method: 'POST', url: '/secret/rotate', headers: { 'x-skyward-csrf': 'valid' } } as any, res as any, options.mcp_token, store, 'valid');
     assert.equal(status, 200);

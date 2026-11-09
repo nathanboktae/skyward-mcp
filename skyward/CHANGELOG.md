@@ -1,3 +1,9 @@
+## 0.4.1
+
+- Enable secret URLs automatically on first startup; preserve existing secrets and explicit disabling.
+- Show a copyable secret path when no endpoint is entered, instead of a blank field.
+- Support HTTP LAN connection URLs and remember the endpoint in the browser.
+
 ## 0.4.0
 
 - Add opt-in secret URLs with enable, rotate, disable, and copy controls in the HA-authenticated setup page.

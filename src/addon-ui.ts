@@ -10,12 +10,12 @@ export function connectionPage(token: string, nonce: string, secret: string | nu
   const safeToken = JSON.stringify(token).replace(/</g, '\\u003c');
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Skyward MCP connection</title><style nonce="${nonce}">
-:root{color-scheme:light dark;font:16px system-ui}body{max-width:680px;margin:48px auto;padding:0 24px}h1{font-size:28px}p{line-height:1.6;color:light-dark(#475569,#b8c5d6)}label{display:block;margin-top:24px;font-weight:600}input,textarea{box-sizing:border-box;width:100%;padding:12px;margin:8px 0;border:1px solid #718096;border-radius:8px;font:14px monospace}textarea{min-height:230px}button{padding:12px 18px;border:0;border-radius:8px;background:#0284c7;color:white;font:inherit;cursor:pointer}#status{min-height:24px}
+:root{color-scheme:light dark;font:16px system-ui}body{max-width:680px;margin:48px auto;padding:0 24px}h1{font-size:28px}p{line-height:1.6;color:light-dark(#475569,#b8c5d6)}label{display:block;margin-top:24px;font-weight:600}input,textarea{box-sizing:border-box;width:100%;padding:12px;margin:8px 0;border:1px solid #718096;border-radius:8px;font:14px monospace}textarea{min-height:230px}button{padding:12px 18px;border:0;border-radius:8px;background:#0284c7;color:white;font:inherit;cursor:pointer}button:disabled{opacity:.45;cursor:default}#status{min-height:24px}
 </style><main><h1>Connect to Skyward MCP</h1><p>Your access token is ready and stays the same across restarts. Copy these settings into your MCP client.</p>
 <label for="endpoint">MCP server URL</label><input id="endpoint" type="url" spellcheck="false" placeholder="https://skyward.example.com/mcp"><p>Use your Home Assistant's LAN address and the add-on's network port (3000 by default). For ChatGPT, enter a public HTTPS tunnel or reverse proxy URL ending in /mcp. Nabu Casa does not expose this app’s MCP port. This app does not create a tunnel or HTTPS certificate.</p>
-<label for="settings">Connection settings</label><textarea id="settings" readonly spellcheck="false" aria-label="Connection settings"></textarea><button id="copy" type="button">Copy connection settings</button><p id="status" role="status"></p><p>Transport: Streamable HTTP. If your client uses separate fields, enter the URL and Authorization header shown above. Keep these settings private: the token grants access to your configured Skyward account.</p><h2>ChatGPT secret URL</h2><p>Optional: enable a separate secret URL, then choose “No authentication” when adding it in ChatGPT. Anyone with this URL can access your Skyward data. Configure your proxy to omit or redact request paths in access logs.</p>
+<label for="settings">Connection settings</label><textarea id="settings" readonly spellcheck="false" aria-label="Connection settings"></textarea><button id="copy" type="button">Copy connection settings</button><p id="status" role="status"></p><p>Transport: Streamable HTTP. If your client uses separate fields, enter the URL and Authorization header shown above. Keep these settings private: the token grants access to your configured Skyward account.</p><h2>ChatGPT secret URL</h2><p>Secret URL access is enabled automatically. Choose “No authentication” when adding it in ChatGPT. Anyone with this URL can access your Skyward data. Configure your proxy to omit or redact request paths in access logs.</p>
 <button id="rotate" type="button">Enable secret URL</button> <button id="disable" type="button">Disable secret URL</button>
-<label for="secret">Secret connection URL</label><input id="secret" readonly type="password"><button id="copy-secret" type="button">Copy secret URL</button><p id="secret-status" role="status"></p><p>Rotating invalidates the previous URL for new requests immediately. Bearer-token clients are unaffected.</p></main>
+<label id="secret-label" for="secret">Secret connection URL</label><input id="secret" readonly type="password"><button id="copy-secret" type="button">Copy secret URL</button><p id="secret-status" role="status"></p><p>Rotating invalidates the previous URL for new requests immediately. Bearer-token clients are unaffected.</p></main>
 <script nonce="${nonce}">
 const token = ${safeToken};
 const endpoint = document.getElementById('endpoint');
@@ -25,16 +25,18 @@ let secretToken = ${JSON.stringify(secret)};
 const csrf = ${JSON.stringify(csrf)};
 const secretField = document.getElementById('secret');
 const secretStatus = document.getElementById('secret-status');
-function publicEndpoint() {
-  try { const u = new URL(endpoint.value); if (u.protocol !== 'https:' || u.username || u.password || u.search || u.hash || !u.pathname.endsWith('/mcp')) return null; return u.href; } catch { return null; }
+function connectionEndpoint() {
+  try { const u = new URL(endpoint.value.trim()); if (!['https:', 'http:'].includes(u.protocol) || u.username || u.password || u.search || u.hash || !u.pathname.endsWith('/mcp')) return null; return u.href; } catch { return null; }
 }
 function updateSecret() {
-  const base = publicEndpoint();
-  secretField.value = secretToken && base ? base + '/' + secretToken : '';
+  const base = connectionEndpoint();
+  secretField.value = secretToken ? (base || '/mcp') + '/' + secretToken : '';
+  document.getElementById('secret-label').textContent = base ? 'Secret connection URL' : 'Secret connection path';
+  document.getElementById('copy-secret').textContent = base ? 'Copy secret URL' : 'Copy secret path';
   document.getElementById('copy-secret').disabled = !secretField.value;
   document.getElementById('disable').disabled = !secretToken;
   document.getElementById('rotate').textContent = secretToken ? 'Rotate secret URL' : 'Enable secret URL';
-  secretStatus.textContent = !secretToken ? 'Secret URL access is disabled.' : !base ? 'Enter your public HTTPS MCP URL above to copy the secret URL.' : 'Secret URL is ready.';
+  secretStatus.textContent = !secretToken ? 'Secret URL access is disabled.' : !base ? 'Your secret is ready. This is the path only. Enter the MCP server URL above to create a full connection URL; rotating will not supply the server address.' : base.startsWith('https:') ? 'Secret URL is ready. Use a public HTTPS address for ChatGPT.' : 'Local HTTP URL is ready. ChatGPT requires a public HTTPS endpoint.';
 }
 for (const action of ['rotate', 'disable']) document.getElementById(action).addEventListener('click', async () => {
   if (action === 'rotate' && secretToken && !confirm('Invalidate the previous secret URL? Connected clients will need the new URL.')) return;
@@ -45,11 +47,16 @@ for (const action of ['rotate', 'disable']) document.getElementById(action).addE
   } catch { secretStatus.textContent = 'Could not change the secret URL. Reload the page and try again.'; }
 });
 document.getElementById('copy-secret').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(secretField.value); secretStatus.textContent = 'Secret URL copied. Choose No authentication in ChatGPT.'; }
+  try { await navigator.clipboard.writeText(secretField.value); secretStatus.textContent = connectionEndpoint() ? 'Secret URL copied.' : 'Secret path copied. Add your server address before using it in a client.'; }
   catch { secretField.type = 'text'; secretField.focus(); secretField.select(); secretStatus.textContent = 'URL selected. Press Ctrl+C or Command+C to copy.'; }
 });
 function update() { settings.value = JSON.stringify({mcpServers:{skyward:{url:endpoint.value,headers:{Authorization:'Bearer '+token}}}},null,2); status.textContent = ''; updateSecret(); }
-endpoint.addEventListener('input', update); update();
+const endpointKey = 'skyward-mcp-endpoint:' + window.location.pathname;
+try { endpoint.value = localStorage.getItem(endpointKey) || ''; } catch {}
+endpoint.addEventListener('input', () => {
+  try { const valid = connectionEndpoint(); if (valid) localStorage.setItem(endpointKey, valid); else localStorage.removeItem(endpointKey); } catch {}
+  update();
+}); update();
 document.getElementById('copy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(settings.value); status.textContent = 'Connection settings copied.'; }
   catch { settings.focus(); settings.select(); status.textContent = 'Settings selected. Press Ctrl+C or Command+C to copy.'; }
