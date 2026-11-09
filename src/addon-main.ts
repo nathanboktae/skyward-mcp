@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { BridgeInstaller, supervisorHostname } from './bridge-installer.js';
 import { readFile, mkdir, chown } from 'node:fs/promises';
 import { SecretUrlStore } from './secret-url.js';
 import { startHttp } from './http-main.js';
@@ -19,8 +20,16 @@ try {
   const secretDirectory = '/data/connection';
   await mkdir(secretDirectory, { recursive: true, mode: 0o700 });
   if (process.getuid?.() === 0) await chown(secretDirectory, 1000, 1000);
+  let bridge: BridgeInstaller | undefined;
+  try {
+    bridge = new BridgeInstaller('/homeassistant/custom_components/skyward_mcp', '/app/bridge/skyward_mcp', supervisorHostname);
+    await bridge.prepare();
+  } catch {
+    bridge = undefined;
+    console.error('Bundled bridge unavailable. Check the HA configuration mount and existing custom integration.');
+  }
   // Supervisor writes root-owned options. Read them once, then drop privileges
-  // before starting HTTP or launching Chromium. No host directories are mounted.
+  // before starting HTTP or launching Chromium. Only our managed bridge directory is writable by this user.
   if (process.platform === 'linux' && process.getuid?.() === 0) {
     process.setgroups!([]);
     process.setgid!(1000);
@@ -30,7 +39,10 @@ try {
   const secrets = new SecretUrlStore(secretDirectory);
   await secrets.load();
   await startHttp(secrets.current);
-  const ui = createIngressApp(env.SKYWARD_HTTP_TOKEN, secrets);
+  if (bridge && await bridge.installed()) {
+    try { await bridge.install(); } catch { console.error('Could not update the bundled bridge; use Enable Nabu Casa access to retry.'); }
+  }
+  const ui = createIngressApp(env.SKYWARD_HTTP_TOKEN, secrets, bridge);
   await new Promise<void>((resolve, reject) => {
     ui.once('error', reject);
     ui.listen(8099, '0.0.0.0', resolve);

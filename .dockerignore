@@ -5,3 +5,7 @@
 !tsconfig.json
 !src/
 !src/**
+
+!bridge/
+!bridge/**
+**/__pycache__

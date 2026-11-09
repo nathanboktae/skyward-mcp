@@ -28,6 +28,22 @@ jobs:
         run: npm test && npm run check
         env:
           SKYWARD_BROWSER: chromium
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Test Python bridge
+        run: |
+          python -m pip install aiohttp==3.14.5
+          python -m unittest discover -s test -p '*_test.py' -v
+          python -m compileall -q bridge
+      - name: Test bundled integration in Home Assistant Core
+        run: |
+          mkdir -p "$RUNNER_TEMP/ha-bridge/custom_components"
+          cp -R bridge/skyward_mcp "$RUNNER_TEMP/ha-bridge/custom_components/"
+          docker run --rm --entrypoint python \
+            -v "$RUNNER_TEMP/ha-bridge:/config" \
+            -v "$PWD/scripts/ha-bridge-smoke.py:/tests/ha-bridge-smoke.py:ro" \
+            ghcr.io/home-assistant/home-assistant:2026.11.1 /tests/ha-bridge-smoke.py
       - name: Read release version
         id: version
         env:

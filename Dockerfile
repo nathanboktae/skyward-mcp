@@ -8,7 +8,7 @@ COPY src ./src
 RUN npm run build && npm prune --omit=dev --ignore-scripts
 
 FROM node:22-bookworm-slim
-ARG BUILD_VERSION=0.4.1
+ARG BUILD_VERSION=0.5.0
 LABEL org.opencontainers.image.title="Skyward MCP" \
       org.opencontainers.image.description="Skyward Family Access MCP server for Home Assistant" \
       org.opencontainers.image.source="https://github.com/nathanboktae/skyward-mcp" \
@@ -25,6 +25,7 @@ WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY bridge ./bridge
 # The lockfile pins Playwright; install its matching ARM64 browser and libraries.
 RUN ./node_modules/.bin/playwright install --with-deps --only-shell chromium \
     && rm -rf /var/lib/apt/lists/* /root/.npm \

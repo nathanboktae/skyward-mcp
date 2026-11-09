@@ -53,7 +53,8 @@ test('add-on metadata, version, image, and options stay consistent', () => {
   assert.equal(manifest.options.mcp_token, undefined);
   assert.equal(manifest.privileged, undefined);
   assert.equal(manifest.host_network, undefined);
-  assert.equal(manifest.hassio_api, undefined);
+  assert.equal(manifest.hassio_api, true);
+  assert.equal(manifest.hassio_role, 'default');
   assert.deepEqual(Object.keys(manifest.schema).sort(), Object.keys(options).sort());
   assert.doesNotThrow(() => addonEnvironment({ ...manifest.options, ...options }));
   const translations = parse(readFileSync('skyward/translations/en.yaml', 'utf8'));
@@ -97,13 +98,16 @@ test('connection page renders, edits endpoint, and copies settings with manual f
   const browser = await chromium.launch({ channel: process.env.SKYWARD_BROWSER === 'chromium' ? undefined : 'chrome' });
   try {
     const page = await browser.newPage();
-    await page.route('http://homeassistant.local:8123/**', route => route.fulfill({ contentType: 'text/html', body: connectionPage(options.mcp_token, 'test-nonce') }));
+    await page.route('http://homeassistant.local:8123/**', route => route.fulfill({ contentType: 'text/html', body: connectionPage(options.mcp_token, 'test-nonce', null, 'test-csrf', true) }));
     let urlSecret: string | null = null;
     await page.route('**/secret/*', route => {
       urlSecret = route.request().url().endsWith('/disable') ? null : 'c'.repeat(64);
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ token: urlSecret }) });
     });
+    await page.route('**/bridge/install', route => route.fulfill({ status: 200, body: 'Installed.' }));
     await page.goto('http://homeassistant.local:8123/api/hassio_ingress/test/');
+    await page.getByRole('button', { name: 'Enable Nabu Casa access' }).click();
+    await page.getByText('Bridge installed.', { exact: false }).waitFor();
     const endpoint = page.getByLabel('MCP server URL');
     assert.equal(await endpoint.inputValue(), '');
     await endpoint.fill('https://mcp.example.org/mcp');
@@ -132,6 +136,8 @@ test('connection page renders, edits endpoint, and copies settings with manual f
     await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined }));
     await page.getByRole('button', { name: 'Copy connection settings' }).click();
     assert.match(await page.locator('#status').innerText(), /Settings selected/);
+    await page.getByRole('button', { name: 'Use this Home Assistant address' }).click();
+    assert.equal(await endpoint.inputValue(), 'http://homeassistant.local:8123/api/skyward_mcp/mcp');
   } finally { await browser.close(); }
 });
 

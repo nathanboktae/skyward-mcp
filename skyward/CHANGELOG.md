@@ -1,3 +1,10 @@
+## 0.5.0
+
+- Bundle an HA integration that forwards MCP requests through HA/Nabu Casa.
+- Add Enable Nabu Casa access and Use this Home Assistant address controls.
+- Require writable HA configuration access and default-role Supervisor API access.
+- Install/update only the managed bridge; HA Core restart and initial integration setup are required.
+
 ## 0.4.1
 
 - Enable secret URLs automatically on first startup; preserve existing secrets and explicit disabling.

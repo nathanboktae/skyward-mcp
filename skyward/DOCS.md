@@ -1,6 +1,6 @@
 # Skyward MCP for Home Assistant OS
 
-Runs a read-only Skyward Qmlativ Family Access MCP server on Raspberry Pi 5 / ARM64 Home Assistant OS. Other Skyward interfaces have not been validated. This is a server add-on, not a Home Assistant entity integration or a HACS package.
+Runs a read-only Skyward Qmlativ Family Access MCP server on Raspberry Pi 5 / ARM64 Home Assistant OS. Other Skyward interfaces have not been validated. The app bundles a small Home Assistant integration for Nabu Casa access. No separate HACS download is needed.
 
 ## Install
 
@@ -39,9 +39,9 @@ The endpoint exposes `list_students`, `get_student_schedule`, and `get_student_g
 - A 401 from `/mcp` means the client token is missing or incorrect.
 - A 405 from a browser visiting `/mcp` is normal: connect using an MCP client that sends POST requests.
 - If the image cannot be downloaded, confirm the requested version exists and the GHCR package is public. First-time publishing may require the maintainer to change package visibility.
-- The browser is bundled in the image. No Chrome installation, host networking, Supervisor API access, or disabled Protection mode is required.
+- The browser is bundled in the image. No Chrome installation, host networking, or disabled Protection mode is required. The app uses default-role Supervisor API access to discover its internal hostname and a writable HA configuration mount for its bundled bridge.
 
-The initial release is experimental until verified on a real HA OS installation. CI tests native ARM64 Linux, Chromium startup, the HA options entrypoint, and MCP HTTP discovery; it does not run a full Supervisor or use your school credentials.
+The initial release is experimental until verified on a real HA OS installation. CI tests native ARM64 Linux, Chromium startup, the HA options entrypoint, and MCP HTTP discovery; it does not run a full Supervisor or use your school credentials. The bridge is also tested inside HA Core, but Nabu Casa/ChatGPT connectivity requires testing on your installation.
 
 ## ChatGPT secret URL (0.4.0+)
 
@@ -51,3 +51,17 @@ The initial release is experimental until verified on a real HA OS installation.
 4. Use **Rotate secret URL** to replace it, or **Disable secret URL** to revoke it. Old URLs stop working for new requests immediately; already-running tool calls may finish. Existing bearer-token clients keep working.
 
 Secret URL access is enabled automatically when no stored configuration exists. Existing secrets are retained, and explicitly disabled access stays disabled across updates and restarts. Its separate 256-bit random credential is persisted in `/data/connection/secret-url.json` and survives restarts/updates; backups contain this credential. Only HA ingress can access the management controls, which also require a CSRF token. Anyone with the complete URL can query your configured account: do not share it publicly. Disable or redact request paths in tunnel/reverse-proxy access logs. The app does not log URLs, and strips the secret before handing requests to the MCP transport. Keep the setup page on ingress, not your public proxy.
+
+## One-package Nabu Casa setup (0.5.0+)
+
+1. Update/start the Skyward app, open **Web UI**, and click **Enable Nabu Casa access**. This installs bundled files only in `/config/custom_components/skyward_mcp` (seen as `/homeassistant/custom_components/skyward_mcp` inside the app). An independently installed integration at that path is left untouched and installation is refused.
+2. Restart **Home Assistant Core** from its system restart menu. Restarting only the Skyward app is not enough.
+3. Go to **Settings → Devices & services → Add integration → Skyward MCP** and confirm. No credentials need to be copied. If already configured, only the restart is needed.
+4. Open the Skyward Web UI through your Nabu Casa URL and click **Use this Home Assistant address**. The endpoint should be `https://YOUR.ui.nabu.casa/api/skyward_mcp/mcp`. If using HA locally, enter your Nabu Casa address manually instead.
+5. Copy the secret URL into ChatGPT and choose **No authentication**. It includes exactly one `/api/skyward_mcp/mcp/SECRET` path.
+
+The integration forwards requests only to this app's internal hostname on port 3000. The app validates its existing secret on every request; rotation and disabling take effect immediately for new requests. Browser Origin requests, oversized bodies, and redirects are rejected. The setup page remains ingress-only. A browser GET of the bridge MCP endpoint returns 405; MCP clients use POST. A 404 indicates the bridge is not loaded or the secret path is invalid. A 502 indicates the app is unavailable.
+
+App upgrades refresh an already-installed managed bridge at startup; restart HA Core after bridge updates. Installing the app alone does not modify YAML or HA's `.storage` configuration. Bridge setup is an explicit step, and the app never restarts HA automatically. Removing the Skyward integration in Devices & services disables its routes. Removing the app alone leaves the integration files; remove the integration entry first and delete only its `custom_components/skyward_mcp` directory if no longer wanted, then restart HA.
+
+HA Core debug HTTP logs or external request logs can include URLs. Avoid enabling request-path debug/access logging when using secret URLs. Never share the full URL.

@@ -8,7 +8,7 @@ The `skyward/` folder makes this repository a Home Assistant add-on repository. 
 
 [Add this repository to Home Assistant](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fnathanboktae%2Fskyward-mcp)
 
-See [add-on installation and configuration](skyward/DOCS.md). Configure Skyward credentials through HA's Configuration tab, start the add-on, and use **Open Web UI → Copy connection settings** to get the automatically generated token, then connect to `http://YOUR_HA_IP:3000/mcp` with a bearer header. For ChatGPT, the setup page also supports an optional, independently rotatable secret URL behind your own public HTTPS tunnel or proxy; see the installation guide. This initial add-on release is experimental pending testing on real HA OS hardware.
+See [add-on installation and configuration](skyward/DOCS.md). Configure Skyward credentials through HA's Configuration tab, start the add-on, and use **Open Web UI → Copy connection settings** to get the automatically generated token, then connect to `http://YOUR_HA_IP:3000/mcp` with a bearer header. For ChatGPT, the setup page also supports an optional, independently rotatable secret URL through its bundled HA bridge and Nabu Casa, or your own HTTPS proxy; see the installation guide. This initial add-on release is experimental pending testing on real HA OS hardware.
 
 ## Setup
 
@@ -132,3 +132,5 @@ To release:
 5. Reload the HA add-on store to discover the release.
 
 The container can also run outside HA with normal environment variables by overriding its command to `node dist/http-main.js` and using `--user 1000:1000 --init`. The default command is specifically for HA options-file startup.
+
+For a single-package Nabu Casa installation, use **Enable Nabu Casa access** in the Web UI, restart HA Core, then add **Skyward MCP** under Devices & services. See [the setup guide](skyward/DOCS.md#one-package-nabu-casa-setup-050).

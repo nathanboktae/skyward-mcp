@@ -6,6 +6,10 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 
 assert.equal(process.arch, 'arm64');
 assert.equal(process.getuid(), 1000);
+const { BridgeInstaller } = await import('./dist/bridge-installer.js');
+const bridge = new BridgeInstaller('/homeassistant/custom_components/skyward_mcp', '/app/bridge/skyward_mcp', async () => 'test-skyward-mcp');
+await bridge.install();
+assert.ok(await bridge.installed());
 const { SecretUrlStore } = await import('./dist/secret-url.js');
 const urlStore = new SecretUrlStore('/data/connection');
 await urlStore.load();
